@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f7f2">
+    <meta name="description" content="Find a nearby water point and share its current status with your community.">
+    <title>MajiWatch — Water, together</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="MajiWatch home">
+        <span class="brand-mark" aria-hidden="true">m</span>
+        <span>Maji<span class="brand-light">Watch</span></span>
+      </a>
+      <span class="demo-label"><span class="demo-dot"></span> Community demo</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div class="intro-copy">
+          <p class="eyebrow">WATER, TOGETHER</p>
+          <h1 id="page-title">Know before<br>you make the trip.</h1>
+          <p class="intro-text">Check a water point nearby. Share a quick update so the next person knows what to expect.</p>
+          <button class="location-button" id="location-button" type="button">
+            <span aria-hidden="true">⌖</span> Use my location
+          </button>
+          <p class="location-note" id="location-note">Location is optional. Your precise location is never saved.</p>
+        </div>
+        <div class="water-art" aria-hidden="true">
+          <div class="sun"></div>
+          <div class="water-jar"><span></span></div>
+          <div class="water-ripple ripple-one"></div>
+          <div class="water-ripple ripple-two"></div>
+          <span class="art-caption">A little info<br>goes a long way.</span>
+        </div>
+      </section>
+
+      <section class="points-section" aria-labelledby="points-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">LOOK OUT FOR EACH OTHER</p>
+            <h2 id="points-heading">Water points <span class="point-count" id="point-count"></span></h2>
+          </div>
+          <button class="text-button" id="reset-button" type="button" title="Clear your reports and restore the demo data">Reset demo</button>
+        </div>
+
+        <div class="notice" role="note">
+          <span class="notice-icon" aria-hidden="true">i</span>
+          <span><strong>Sample information</strong> — these demo updates are not live or verified. Always check locally before travelling.</span>
+        </div>
+
+        <div class="controls">
+          <label class="search-box">
+            <span class="search-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Search water points</span>
+            <input id="search-input" type="search" placeholder="Search a place or landmark">
+            <kbd>/</kbd>
+          </label>
+          <div class="filter-row" role="group" aria-label="Filter by water point status">
+            <button class="filter-button active" type="button" data-filter="all" aria-pressed="true">All <span id="all-count"></span></button>
+            <button class="filter-button" type="button" data-filter="working" aria-pressed="false"><span class="filter-dot working-dot"></span>Working</button>
+            <button class="filter-button" type="button" data-filter="low" aria-pressed="false"><span class="filter-dot low-dot"></span>Low supply</button>
+            <button class="filter-button" type="button" data-filter="unavailable" aria-pressed="false"><span class="filter-dot unavailable-dot"></span>Unavailable</button>
+          </div>
+        </div>
+
+        <div class="results-meta">
+          <span id="results-label">Showing demo water points</span>
+          <span class="updated-label"><span class="pulse-dot"></span> Updates from the community</span>
+        </div>
+        <div class="point-list" id="point-list" aria-live="polite"></div>
+        <div class="empty-state" id="empty-state" hidden>
+          <span class="empty-icon" aria-hidden="true">⌕</span>
+          <h3>No water points found</h3>
+          <p>Try a different search or clear the status filter.</p>
+          <button class="text-button" id="clear-search" type="button">Clear search</button>
+        </div>
+        <p class="privacy-note"><span aria-hidden="true">♡</span> Reports stay on this device in this demo. No account or mobile data needed to share an update here.</p>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="#"><span class="brand-mark" aria-hidden="true">m</span><span>Maji<span class="brand-light">Watch</span></span></a>
+      <span>Small updates. Stronger communities.</span>
+      <span class="footer-region">Built for low-bandwidth communities</span>
+    </footer>
+
+    <dialog id="report-dialog" aria-labelledby="dialog-title">
+      <form id="report-form" method="dialog">
+        <div class="dialog-top">
+          <div>
+            <p class="eyebrow">COMMUNITY UPDATE</p>
+            <h2 id="dialog-title">How is the water?</h2>
+            <p class="dialog-point" id="dialog-point"></p>
+          </div>
+          <button class="close-button" id="close-dialog" type="button" aria-label="Close report form">×</button>
+        </div>
+        <fieldset>
+          <legend>Choose the current status</legend>
+          <label class="status-choice">
+            <input type="radio" name="status" value="working" required>
+            <span class="choice-dot working-dot"></span><span><strong>Working</strong><small>Water is available</small></span>
+          </label>
+          <label class="status-choice">
+            <input type="radio" name="status" value="low">
+            <span class="choice-dot low-dot"></span><span><strong>Low supply</strong><small>Water is running low</small></span>
+          </label>
+          <label class="status-choice">
+            <input type="radio" name="status" value="unavailable">
+            <span class="choice-dot unavailable-dot"></span><span><strong>Unavailable</strong><small>No water right now</small></span>
+          </label>
+        </fieldset>
+        <label class="note-label" for="report-note">Add a note <span>Optional</span></label>
+        <textarea id="report-note" name="note" rows="3" maxlength="140" placeholder="Anything helpful to know? (140 characters max)"></textarea>
+        <p class="form-hint">Only share what you observed. This update will be saved on this device.</p>
+        <div class="dialog-actions">
+          <button class="cancel-button" id="cancel-report" type="button">Cancel</button>
+          <button class="submit-button" type="submit">Share update <span aria-hidden="true">→</span></button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js" defer></script>
+  </body>
+</html>

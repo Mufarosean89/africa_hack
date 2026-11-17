@@ -1,0 +1,9 @@
+{
+  "name": "MajiWatch — Water, together",
+  "short_name": "MajiWatch",
+  "description": "Check and share community water point updates.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f2",
+  "theme_color": "#f5f7f2"
+}

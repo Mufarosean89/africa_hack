@@ -15,7 +15,7 @@
         <span class="brand-mark" aria-hidden="true">m</span>
         <span>Maji<span class="brand-light">Watch</span></span>
       </a>
-      <span class="demo-label"><span class="demo-dot"></span> Community demo</span>
+      <span class="demo-label"><span class="demo-dot"></span> Cape Town demo</span>
     </header>
 
     <main>
@@ -38,6 +38,26 @@
         </div>
       </section>
 
+      <section class="route-section" id="route-section" aria-labelledby="route-heading" hidden>
+        <div class="route-heading">
+          <div>
+            <p class="eyebrow">OPTIONAL WALKING DIRECTIONS</p>
+            <h2 id="route-heading">Route to <span id="route-point-name"></span></h2>
+          </div>
+          <button class="close-button" id="close-route" type="button" aria-label="Close route map">×</button>
+        </div>
+        <p class="route-disclosure">
+          To calculate a route, your current coordinates and this water point are sent to
+          <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer">FOSSGIS routing</a>.
+          Map tiles come from OpenStreetMap. These services may log requests. Your location is requested only after you press the button and is not saved by MajiWatch.
+        </p>
+        <button class="location-button route-action" id="route-action" type="button">Use my location &amp; find a walking route</button>
+        <p class="route-status" id="route-status" role="status" aria-live="polite">Your location has not been requested.</p>
+        <p class="route-summary" id="route-summary"></p>
+        <p class="route-map-placeholder" id="route-map-placeholder">The map loads only after you request a walking route.</p>
+        <div class="route-map" id="route-map" role="region" aria-label="Walking route map" hidden></div>
+      </section>
+
       <section class="points-section" aria-labelledby="points-heading">
         <div class="section-heading">
           <div>
@@ -49,7 +69,7 @@
 
         <div class="notice" role="note">
           <span class="notice-icon" aria-hidden="true">i</span>
-          <span><strong>Sample information</strong> — these demo updates are not live or verified. Always check locally before travelling.</span>
+          <span><strong>Mapped locations, unknown status</strong> — these OpenStreetMap points are community-mapped, not City-verified. Status appears only after a report in this browser and is not independently verified. Check locally before travelling.</span>
         </div>
 
         <div class="controls">
@@ -64,12 +84,13 @@
             <button class="filter-button" type="button" data-filter="working" aria-pressed="false"><span class="filter-dot working-dot"></span>Working</button>
             <button class="filter-button" type="button" data-filter="low" aria-pressed="false"><span class="filter-dot low-dot"></span>Low supply</button>
             <button class="filter-button" type="button" data-filter="unavailable" aria-pressed="false"><span class="filter-dot unavailable-dot"></span>Unavailable</button>
+            <button class="filter-button" type="button" data-filter="unknown" aria-pressed="false"><span class="filter-dot unknown-dot"></span>Unverified</button>
           </div>
         </div>
 
         <div class="results-meta">
-          <span id="results-label">Showing demo water points</span>
-          <span class="updated-label"><span class="pulse-dot"></span> Updates from the community</span>
+          <span id="results-label">Showing mapped Cape Town water points</span>
+          <span class="updated-label"><span class="pulse-dot"></span> Local reports only</span>
         </div>
         <div class="point-list" id="point-list" aria-live="polite"></div>
         <div class="empty-state" id="empty-state" hidden>
@@ -78,7 +99,7 @@
           <p>Try a different search or clear the status filter.</p>
           <button class="text-button" id="clear-search" type="button">Clear search</button>
         </div>
-        <p class="privacy-note"><span aria-hidden="true">♡</span> Reports stay on this device in this demo. No account or mobile data needed to share an update here.</p>
+        <p class="privacy-note"><span aria-hidden="true">♡</span> Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener noreferrer">ODbL</a>. Locations may be outdated; reports stay on this device.</p>
       </section>
     </main>
 

@@ -1,60 +1,65 @@
-const STORAGE_KEY = "majiwatch-demo-v1";
+const STORAGE_KEY = "majiwatch-cape-town-v2";
+const ROUTING_BASE_URL = "https://routing.openstreetmap.de/routed-foot/route/v1/foot";
+const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
 
 const demoPoints = [
   {
-    id: "community-tap-a",
-    name: "Community Tap A",
-    area: "Kibera · near the community hall",
-    kind: "Public tap",
-    status: "working",
-    minutesAgo: 18,
-    distance: 0.4,
-    latitude: -1.313,
-    longitude: 36.785,
+    id: "osm-12816539595",
+    name: "Ncumo Road",
+    area: "Cape Town · communal outdoor tap",
+    kind: "Communal outdoor tap",
+    status: "unknown",
+    minutesAgo: null,
+    latitude: -34.0588632,
+    longitude: 18.6767399,
+    mapUrl: "https://www.openstreetmap.org/node/12816539595",
     note: ""
   },
   {
-    id: "market-borehole",
-    name: "Market Borehole",
-    area: "Kawangware · by the market entrance",
-    kind: "Borehole",
-    status: "low",
-    minutesAgo: 42,
-    distance: 1.1,
-    latitude: -1.283,
-    longitude: 36.747,
-    note: "Queue is moving slowly."
-  },
-  {
-    id: "school-kiosk",
-    name: "School Water Kiosk",
-    area: "Mathare · next to the primary school",
-    kind: "Water kiosk",
-    status: "working",
-    minutesAgo: 65,
-    distance: 1.8,
-    latitude: -1.269,
-    longitude: 36.855,
+    id: "osm-12816539642",
+    name: "Taliban",
+    area: "Cape Town · communal outdoor tap",
+    kind: "Communal outdoor tap",
+    status: "unknown",
+    minutesAgo: null,
+    latitude: -34.0568395,
+    longitude: 18.6728834,
+    mapUrl: "https://www.openstreetmap.org/node/12816539642",
     note: ""
   },
   {
-    id: "estate-tap",
-    name: "Estate Tap 3",
-    area: "Mukuru · near the health centre",
-    kind: "Public tap",
-    status: "unavailable",
-    minutesAgo: 97,
-    distance: 2.4,
-    latitude: -1.325,
-    longitude: 36.879,
-    note: "Reported closed this morning."
+    id: "osm-12816539644",
+    name: "Peace Park",
+    area: "Cape Town · communal outdoor tap",
+    kind: "Communal outdoor tap",
+    status: "unknown",
+    minutesAgo: null,
+    latitude: -34.059012,
+    longitude: 18.6782309,
+    mapUrl: "https://www.openstreetmap.org/node/12816539644",
+    note: ""
+  },
+  {
+    id: "osm-6877782709",
+    name: "Jack Marais drinking fountain",
+    area: "Cape Town · drinking fountain",
+    kind: "Drinking fountain",
+    status: "unknown",
+    minutesAgo: null,
+    latitude: -33.9859075,
+    longitude: 18.4288169,
+    mapUrl: "https://www.openstreetmap.org/node/6877782709",
+    note: ""
   }
 ];
 
 const statusLabels = {
   working: "Working",
   low: "Low supply",
-  unavailable: "Unavailable"
+  unavailable: "Unavailable",
+  unknown: "Not verified"
 };
 
 const elements = {
@@ -69,14 +74,27 @@ const elements = {
   dialogPoint: document.querySelector("#dialog-point"),
   locationButton: document.querySelector("#location-button"),
   locationNote: document.querySelector("#location-note"),
+  routeSection: document.querySelector("#route-section"),
+  routePointName: document.querySelector("#route-point-name"),
+  routeAction: document.querySelector("#route-action"),
+  routeStatus: document.querySelector("#route-status"),
+  routeSummary: document.querySelector("#route-summary"),
+  routeMap: document.querySelector("#route-map"),
+  routeMapPlaceholder: document.querySelector("#route-map-placeholder"),
   toast: document.querySelector("#toast")
 };
 
 let points = loadPoints();
 let activeFilter = "all";
 let selectedPointId = null;
+let selectedRoutePointId = null;
 let userCoordinates = null;
 let toastTimeout;
+let leafletPromise;
+let mapInstance;
+let lastRouteRequestAt = 0;
+let routeRequestId = 0;
+let routeAbortController = null;
 
 function loadPoints() {
   try {
@@ -118,7 +136,7 @@ function relativeTime(point) {
 }
 
 function distanceFromUser(point) {
-  if (!userCoordinates) return point.distance;
+  if (!userCoordinates) return null;
   const toRadians = value => value * Math.PI / 180;
   const latitudeDifference = toRadians(point.latitude - userCoordinates.latitude);
   const longitudeDifference = toRadians(point.longitude - userCoordinates.longitude);
@@ -134,7 +152,7 @@ function visiblePoints() {
     .map(point => ({ ...point, currentDistance: distanceFromUser(point) }))
     .filter(point => activeFilter === "all" || point.status === activeFilter)
     .filter(point => !query || `${point.name} ${point.area} ${point.kind}`.toLocaleLowerCase().includes(query))
-    .sort((a, b) => a.currentDistance - b.currentDistance);
+    .sort((a, b) => userCoordinates ? a.currentDistance - b.currentDistance : 0);
 }
 
 function createPointCard(point) {
@@ -172,20 +190,34 @@ function createPointCard(point) {
   separator.className = "meta-separator";
   separator.textContent = "·";
   const distance = document.createElement("span");
-  distance.textContent = `${point.currentDistance.toFixed(1)} km`;
+  distance.textContent = userCoordinates ? `${point.currentDistance.toFixed(1)} km` : "Distance unavailable";
   meta.append(location, separator, distance);
 
   const bottom = document.createElement("div");
   bottom.className = "card-bottom";
   const age = document.createElement("span");
   age.className = "report-age";
-  age.textContent = `Updated ${relativeTime(point)}`;
+  age.textContent = point.status === "unknown"
+    ? "No verified status report"
+    : `Reported ${relativeTime(point)}`;
+  const mapLink = document.createElement("a");
+  mapLink.className = "map-link";
+  mapLink.href = point.mapUrl;
+  mapLink.target = "_blank";
+  mapLink.rel = "noopener noreferrer";
+  mapLink.textContent = "Open map ↗";
+  mapLink.setAttribute("aria-label", `View ${point.name} on OpenStreetMap`);
+  const routeButton = document.createElement("button");
+  routeButton.className = "route-card-button";
+  routeButton.type = "button";
+  routeButton.dataset.route = point.id;
+  routeButton.textContent = "Walking route";
   const reportButton = document.createElement("button");
   reportButton.className = "report-button";
   reportButton.type = "button";
   reportButton.dataset.report = point.id;
   reportButton.textContent = "Share update";
-  bottom.append(age, reportButton);
+  bottom.append(age, mapLink, routeButton, reportButton);
   card.append(mainRow, meta);
   if (point.note) {
     const note = document.createElement("p");
@@ -206,7 +238,7 @@ function render() {
   elements.allCount.textContent = points.length;
   elements.results.textContent = userCoordinates
     ? `Sorted by distance from you · ${shown.length} shown`
-    : `Showing ${shown.length} sample water point${shown.length === 1 ? "" : "s"}`;
+    : `Showing ${shown.length} mapped Cape Town water point${shown.length === 1 ? "" : "s"}`;
 }
 
 function showToast(message) {
@@ -214,6 +246,211 @@ function showToast(message) {
   elements.toast.textContent = message;
   elements.toast.classList.add("visible");
   toastTimeout = window.setTimeout(() => elements.toast.classList.remove("visible"), 3200);
+}
+
+function openRoute(pointId) {
+  const point = points.find(item => item.id === pointId);
+  if (!point) return;
+  routeRequestId += 1;
+  if (routeAbortController) routeAbortController.abort();
+  routeAbortController = null;
+  selectedRoutePointId = pointId;
+  elements.routePointName.textContent = point.name;
+  elements.routeSection.hidden = false;
+  elements.routeStatus.textContent = "Your location has not been requested.";
+  elements.routeSummary.textContent = "";
+  elements.routeMap.hidden = true;
+  elements.routeMapPlaceholder.hidden = false;
+  elements.routeAction.disabled = false;
+  elements.routeAction.textContent = "Use my location & find a walking route";
+  if (mapInstance) {
+    mapInstance.remove();
+    mapInstance = null;
+  }
+  elements.routeSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeRoute() {
+  routeRequestId += 1;
+  if (routeAbortController) routeAbortController.abort();
+  routeAbortController = null;
+  elements.routeSection.hidden = true;
+  selectedRoutePointId = null;
+  if (mapInstance) {
+    mapInstance.remove();
+    mapInstance = null;
+  }
+  elements.routeMap.replaceChildren();
+  elements.routeMap.hidden = true;
+  elements.routeMapPlaceholder.hidden = false;
+}
+
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (leafletPromise) return leafletPromise;
+
+  leafletPromise = new Promise((resolve, reject) => {
+    const stylesheet = document.createElement("link");
+    stylesheet.rel = "stylesheet";
+    stylesheet.href = LEAFLET_CSS_URL;
+
+    const script = document.createElement("script");
+    script.src = LEAFLET_JS_URL;
+    script.onload = () => resolve(window.L);
+    script.onerror = () => reject(new Error("The map library could not be loaded. Check your connection and try again."));
+    document.head.append(stylesheet, script);
+  }).catch(error => {
+    leafletPromise = null;
+    throw error;
+  });
+
+  return leafletPromise;
+}
+
+function getWalkingRoute(origin, destination, signal) {
+  const coordinates = `${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}`;
+  const url = `${ROUTING_BASE_URL}/${coordinates}?overview=full&geometries=geojson&steps=false`;
+  const wait = Math.max(0, 1000 - (Date.now() - lastRouteRequestAt));
+
+  return new Promise(resolve => window.setTimeout(resolve, wait))
+    .then(() => {
+      lastRouteRequestAt = Date.now();
+      return fetch(url, { method: "GET", mode: "cors", credentials: "omit", signal })
+        .then(async response => {
+          let data;
+          try {
+            data = await response.json();
+          } catch {
+            throw new Error("The walking route service returned an unreadable response.");
+          }
+          if (!response.ok || data.code !== "Ok") {
+            throw new Error(data.message || "No walking route was found for this location.");
+          }
+          const route = data.routes && data.routes[0];
+          if (!route || !route.geometry || !Array.isArray(route.geometry.coordinates) || route.geometry.coordinates.length < 2) {
+            throw new Error("No walking route was found for this water point.");
+          }
+          return route;
+        })
+    })
+    .catch(error => {
+      if (error.name === "AbortError") {
+        throw new Error("The walking route request timed out. Please try again.");
+      }
+      throw error;
+    });
+}
+
+function formatRouteDistance(metres) {
+  return metres < 1000 ? `${Math.round(metres)} m` : `${(metres / 1000).toFixed(1)} km`;
+}
+
+function formatRouteDuration(seconds) {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  if (minutes < 60) return `about ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `about ${hours} hr ${remainingMinutes} min` : `about ${hours} hr`;
+}
+
+function showRouteOnMap(origin, destination, route) {
+  elements.routeMap.replaceChildren();
+  elements.routeMap.hidden = false;
+  elements.routeMapPlaceholder.hidden = true;
+
+  mapInstance = window.L.map(elements.routeMap, { scrollWheelZoom: false })
+    .setView([destination.latitude, destination.longitude], 15);
+  window.L.tileLayer(TILE_URL, {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · <a href="https://www.openstreetmap.org/fixthemap">Fix the map</a>'
+  }).addTo(mapInstance);
+  const routeLayer = window.L.geoJSON(route.geometry, {
+    style: { color: "#237b60", weight: 6, opacity: 0.9 }
+  }).addTo(mapInstance);
+  const originMarker = window.L.circleMarker([origin.latitude, origin.longitude], {
+    radius: 8,
+    color: "#fff",
+    weight: 3,
+    fillColor: "#3865d8",
+    fillOpacity: 1
+  }).bindPopup("Your location (not saved)").addTo(mapInstance);
+  const destinationMarker = window.L.circleMarker([destination.latitude, destination.longitude], {
+    radius: 8,
+    color: "#fff",
+    weight: 3,
+    fillColor: "#c76150",
+    fillOpacity: 1
+  }).bindPopup(destination.name).addTo(mapInstance);
+
+  const bounds = window.L.featureGroup([routeLayer, originMarker, destinationMarker]).getBounds();
+  mapInstance.fitBounds(bounds.pad(0.15));
+  window.requestAnimationFrame(() => mapInstance && mapInstance.invalidateSize());
+  elements.routeSummary.textContent = `Walking route: ${formatRouteDistance(route.distance)} · ${formatRouteDuration(route.duration)}. Estimated only; confirm the final access point locally.`;
+}
+
+function routeLocationError(error) {
+  if (error.code === 1) return "Location permission was denied. Allow location access in your browser to request a route.";
+  if (error.code === 3) return "Finding your location timed out. Please try again.";
+  return "Your location is unavailable. Check your device settings and try again.";
+}
+
+function requestWalkingRoute() {
+  const destination = points.find(point => point.id === selectedRoutePointId);
+  if (!destination) return;
+  if (!navigator.geolocation) {
+    elements.routeStatus.textContent = "Location is not available in this browser.";
+    return;
+  }
+
+  const requestId = ++routeRequestId;
+  elements.routeAction.disabled = true;
+  elements.routeAction.textContent = "Finding your location…";
+  elements.routeStatus.textContent = "Waiting for your location permission.";
+  elements.routeSummary.textContent = "";
+  elements.routeMap.hidden = true;
+  elements.routeMapPlaceholder.hidden = false;
+  if (mapInstance) {
+    mapInstance.remove();
+    mapInstance = null;
+  }
+
+  navigator.geolocation.getCurrentPosition(async position => {
+    if (requestId !== routeRequestId) return;
+    const origin = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude
+    };
+    const controller = new AbortController();
+    routeAbortController = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    try {
+      elements.routeStatus.textContent = "Requesting an estimated walking route…";
+      const route = await getWalkingRoute(origin, destination, controller.signal);
+      if (requestId !== routeRequestId) return;
+      elements.routeStatus.textContent = "Loading the map…";
+      await loadLeaflet();
+      if (requestId !== routeRequestId) return;
+      showRouteOnMap(origin, destination, route);
+      elements.routeStatus.textContent = `Route to ${destination.name}. Your location was used for this request only.`;
+      elements.routeAction.textContent = "Request route again";
+    } catch (error) {
+      if (requestId !== routeRequestId) return;
+      elements.routeStatus.textContent = error instanceof Error
+        ? error.message
+        : "The walking route could not be loaded. Please try again.";
+      console.error("Could not load MajiWatch walking route:", error);
+      elements.routeAction.textContent = "Try walking route again";
+    } finally {
+      window.clearTimeout(timeout);
+      if (routeAbortController === controller) routeAbortController = null;
+      if (requestId === routeRequestId) elements.routeAction.disabled = false;
+    }
+  }, error => {
+    if (requestId !== routeRequestId) return;
+    elements.routeStatus.textContent = routeLocationError(error);
+    elements.routeAction.disabled = false;
+    elements.routeAction.textContent = "Try walking route again";
+  }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
 }
 
 function openReport(pointId) {
@@ -239,9 +476,16 @@ document.querySelector(".filter-row").addEventListener("click", event => {
 });
 
 elements.list.addEventListener("click", event => {
+  const routeButton = event.target.closest("[data-route]");
+  if (routeButton) {
+    openRoute(routeButton.dataset.route);
+    return;
+  }
   const button = event.target.closest("[data-report]");
   if (button) openReport(button.dataset.report);
 });
+elements.routeAction.addEventListener("click", requestWalkingRoute);
+document.querySelector("#close-route").addEventListener("click", closeRoute);
 elements.search.addEventListener("input", render);
 document.querySelector("#clear-search").addEventListener("click", () => {
   elements.search.value = "";

@@ -1,4 +1,4 @@
-const CACHE_NAME = "majiwatch-static-v1";
+const CACHE_NAME = "majiwatch-static-v4";
 const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json"];
 
 self.addEventListener("install", event => {
